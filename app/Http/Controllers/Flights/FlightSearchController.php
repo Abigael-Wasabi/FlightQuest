@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Flights;
 use App\Http\Controllers\Controller;
 use App\Models\Flight;
 use App\Models\FlightsSearchModel;
+use App\Services\AmadeusAuthService;
+use GuzzleHttp\Exception\RequestException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
@@ -12,6 +14,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
+use GuzzleHttp\Client;
 
 class FlightSearchController extends Controller
 {
@@ -69,8 +72,8 @@ class FlightSearchController extends Controller
         if ($count == 9) {
             //Return flight
             $search->origin = strtoupper($searchParams['0']);
-            $search->origin_name =  $this->flightsModel->getAirportName(($searchParams['0']));
-            $search->origin_city =  $this->flightsModel->getAirportCity(($searchParams['0']));
+            $search->origin_name = $this->flightsModel->getAirportName(($searchParams['0']));
+            $search->origin_city = $this->flightsModel->getAirportCity(($searchParams['0']));
             $search->destination = strtoupper($searchParams['1']);
             $search->destination_name = $this->flightsModel->getAirportName(($searchParams['1']));
             $search->destination_city = $this->flightsModel->getAirportCity(($searchParams['1']));
@@ -84,11 +87,11 @@ class FlightSearchController extends Controller
 
         } else {
             $search->origin = strtoupper($searchParams['0']);
-            $search->origin_name =  $this->flightsModel->getAirportName(($searchParams['0']));
-            $search->origin_city =  $this->flightsModel->getAirportCity(($searchParams['0']));
+            $search->origin_name = $this->flightsModel->getAirportName(($searchParams['0']));
+            $search->origin_city = $this->flightsModel->getAirportCity(($searchParams['0']));
             $search->destination = strtoupper($searchParams['1']);
-            $search->destination_name =  $this->flightsModel->getAirportName(($searchParams['1']));
-            $search->destination_city =  $this->flightsModel->getAirportCity(($searchParams['1']));
+            $search->destination_name = $this->flightsModel->getAirportName(($searchParams['1']));
+            $search->destination_city = $this->flightsModel->getAirportCity(($searchParams['1']));
             $search->tripType = $searchParams['2'];
             $search->classType = $searchParams['3'];
             $search->departureDate = $searchParams['4'];
@@ -113,7 +116,7 @@ class FlightSearchController extends Controller
 
         // Makes GET request to the Amadeus endpoint shopping/flight-offers
         try {
-            $accessToken = $this->getAccessToken(); // Retrieving access token
+            $accessToken = AmadeusAuthService::getAccessToken(); // Retrieving access token
 
             $queryParams = [
                 'originLocationCode' => $search->origin,
@@ -203,7 +206,7 @@ class FlightSearchController extends Controller
 
         // Makes POST request to the Amadeus endpoint shopping/flight-offers/pricing
         try {
-            $accessToken = $this->getAccessToken(); // Retrieving access token
+            $accessToken = AmadeusAuthService::getAccessToken(); // Retrieving access token
 
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $accessToken,
@@ -227,7 +230,7 @@ class FlightSearchController extends Controller
     public function offers(Request $request): JsonResponse
     {
         try {
-            $accessToken = $this->getAccessToken();
+            $accessToken =AmadeusAuthService::getAccessToken();
 
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $accessToken,
@@ -313,7 +316,7 @@ class FlightSearchController extends Controller
             ];
 
             // Get access token
-            $accessToken = $this->getAccessToken();
+            $accessToken = AmadeusAuthService::getAccessToken();
 
             // Make POST request to Amadeus pricing endpoint
             $response = Http::withHeaders([
@@ -373,30 +376,4 @@ class FlightSearchController extends Controller
         }
     }
 
-
-    // Access token required for authentication with the Amadeus API
-    private function getAccessToken()
-    {
-        try {
-            $response = Http::asForm()->post('https://test.api.amadeus.com/v1/security/oauth2/token', [
-                'grant_type' => 'client_credentials',
-                'client_id' => $this->amadeusApiKey,
-                'client_secret' => $this->amadeusApiSecret,
-            ]);
-
-            $data = $response->json();
-
-            Log::info('Amadeus API token response', $data);
-
-            if (isset($data['access_token'])) {
-                return $data['access_token'];
-            } else {
-                throw new \Exception('Access token not found in response');
-            }
-        } catch (\Exception $e) {
-            Log::error('Error fetching access token: ' . $e->getMessage());
-            throw new \Exception('Error fetching access token: ' . $e->getMessage());
-        }
-    }
 }
-

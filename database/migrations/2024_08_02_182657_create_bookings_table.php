@@ -21,7 +21,6 @@ return new class extends Migration
             $table->json('seats_info');
             $table->json('booking_info')->nullable(); //the order confirmation details
             $table->string('status')->default(Booking::STATUS_PENDING); //booking status
-            $table->string('pnr')->nullable();
             $table->timestamps();
         });
     }

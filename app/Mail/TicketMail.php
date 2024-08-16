@@ -19,11 +19,32 @@ class TicketMail extends Mailable
 
     protected $bookingId;
     protected $ticketService;
+    protected $passengerInfo;
+    protected $segments;
+    protected $associatedRecords;
+    protected $bookingInfo;
+    protected $seatsInfo;
+    protected $luggageInfo ;
+    protected $booking_data;
 
-    public function __construct($bookingId, TicketService $ticketService)
+    public function __construct($bookingId, $flightOrderId, TicketService $ticketService)
     {
         $this->bookingId = $bookingId;
+        $this->flightOrderId = $flightOrderId;
         $this->ticketService = $ticketService;
+
+        //fetching all necessary data
+        $ticketData = $this->ticketService->getTicketData($bookingId, $flightOrderId);
+
+        $this->passengerInfo = $ticketData['passengerInfo'];
+        $this->flightDetails = $ticketData['flightDetails'];
+        $this->seatsInfo = $ticketData['seatsInfo'];
+        $this->luggageInfo = $ticketData['luggageInfo'];
+        $this->status = $ticketData['status'];
+        $this->flightOrderId = $ticketData['flightOrderId'];
+        $this->queuingOfficeId = $ticketData['queuingOfficeId'];
+        $this->reference = $ticketData['reference'];
+        $this->booking_data = $ticketData['booking_data'];
     }
     /**
      * Build the message.
@@ -43,6 +64,13 @@ class TicketMail extends Mailable
             ])
             ->with([
                 'bookingId' => $this->bookingId,
+                'passengerInfo' => $this->passengerInfo,
+                'segments' => $this->segments,
+                'associatedRecords' => $this->associatedRecords,
+                'bookingInfo' => $this->bookingInfo,
+                'seatsInfo' => $this->seatsInfo,
+                'luggageInfo' => $this->luggageInfo,
+                'booking_data' => $this->booking_data,
             ]);
     }
 
@@ -81,7 +109,7 @@ class TicketMail extends Mailable
      * @throws \Exception
      */
 
-    public  static  function sendTicketEmail($bookingId): void
+    public  static  function sendTicketEmail($bookingId, $flightOrderId): void
     {
         $ticketService = new TicketService();
         $booking = Booking::find($bookingId);
@@ -91,7 +119,7 @@ class TicketMail extends Mailable
                 foreach ($passengers as $passenger) {
                     if (isset($passenger['email'])) {
                         $passengerEmail = $passenger['email'];
-                        Mail::to($passengerEmail)->send(new TicketMail($bookingId, $ticketService));
+                        Mail::to($passengerEmail)->send(new TicketMail($bookingId, $flightOrderId, $ticketService));
                         Log::info('Ticket email sent successfully', [
                             'bookingId' => $bookingId,
                             'email' => $passengerEmail,

@@ -3,15 +3,21 @@
 namespace App\Http\Controllers\Flights;
 
 use App\Http\Controllers\Controller;
+use App\Mail\TicketMail;
 use App\Models\Booking;
+use App\Models\FlightOrders;
 use App\Models\Luggage;
 use App\Models\Passengers;
 use App\Models\Seats;
 use App\Models\Flight;
+use App\Services\TicketService;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class BookingController extends Controller
 {
@@ -168,8 +174,7 @@ class BookingController extends Controller
                     ]
                 ]
             ];
-
-            //calling the createOrder method
+//            calling the createOrder method
             $flightModel = new Flight();
             Log::info('Calling createOrder function in Flight model', ['bookingData' => $bookingData, 'bookingId' => $booking->id]);
             $orderResponse = $flightModel->createOrder($bookingData, $booking->id);
@@ -182,4 +187,5 @@ class BookingController extends Controller
             return response()->json(['message' => $exception->getMessage()], 500);
         }
     }
+
 }

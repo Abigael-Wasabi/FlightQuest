@@ -3,289 +3,253 @@
 namespace App\Http\Controllers\Cars;
 
 use App\Http\Controllers\Controller;
+use App\Models\Cities;
+use App\Models\TransfersBooking;
+use App\Services\AmadeusAuthService;
+//use DB;
+use Exception;
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\GuzzleException;
+use GuzzleHttp\Exception\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class CarsTransfersController extends Controller
 {
-    protected mixed $amadeusApiKey;
-    protected mixed $amadeusApiSecret;
+//    protected mixed $amadeusApiKey;
+//    protected mixed $amadeusApiSecret;
     protected string $amadeusApiUrl = 'https://test.api.amadeus.com/';
 
     public function __construct(){
-        $this->amadeusApiKey = env('amadeus_api_key');
-        $this->amadeusApiSecret = env('amadeus_api_secret');
+//        $this->amadeusApiKey = env('amadeus_api_key');
+//        $this->amadeusApiSecret = env('amadeus_api_secret');
     }
-//sample input
-//{
-//"startLocationCode": "CDG",
-//"endAddressLine": "Avenue Anatole France, 5",
-//"endCityName": "Paris",
-//"endZipCode": "75007",
-//"endCountryCode": "FR",
-//"endName": "Souvenirs De La Tour",
-//"endGeoCode": "48.859466,2.2976965",
-//"transferType": "PRIVATE",
-//"startDateTime": "2024-08-01T10:30:00",
-//"passengers": 2,
-//"stopOvers": [
-//{
-//"duration": "PT2H30M",
-//"sequenceNumber": 1,
-//"addressLine": "Avenue de la Bourdonnais, 19",
-//"countryCode": "FR",
-//"cityName": "Paris",
-//"zipCode": "75007",
-//"name": "De La Tours",
-//"geoCode": "48.859477,2.2976985",
-//"stateCode": "FR"
-//}
-//],
-//"startConnectedSegment": {
-//    "transportationType": "FLIGHT",
-//    "transportationNumber": "AF380",
-//    "departure": {
-//        "localDateTime": "2024-08-01T09:00:00",
-//      "iataCode": "NCE"
-//    },
-//    "arrival": {
-//        "localDateTime": "2024-08-01T10:00:00",
-//      "iataCode": "CDG"
-//    }
-//  },
-//  "passengerCharacteristics": [
-//    {
-//        "passengerTypeCode": "ADT",
-//      "age": 20
-//    },
-//    {
-//        "passengerTypeCode": "CHD",
-//      "age": 10
-//    }
-//  ]
-//}
-
-//    public function transferSearch(Request $request): JsonResponse
-//    {
-//        try{
-//            $accessToken = $this->getAccessToken();
-//
-//            $response = Http::withHeaders([
-//                'Authorization' => 'Bearer '.$accessToken,
-//                'Content-Type' => 'application/json',
-//            ])->post($this->amadeusApiUrl.'v1/shopping/transfer-offers', $request->json()->all());
-//
-//            Log::info('Amadeus Transfer Search API Response', [
-//                'status' => $response->status(),
-//                'body' => $response->body(),
-//            ]);
-//
-//            if($response->failed()){
-//                return response()->json([
-//                    'error' => 'Failed to search transfer offers',
-//                    'details' => $response->json(),
-//                ], $response ->status());
-//            }
-//            return response()->json($response->json());
-//        } catch(\Exception $e){
-//            return response()->json(['error' => 'Failed to search transfer offers', 'message' => $e->getMessage()], 500);
-//        }
-//    }
-
-//{
-//"data": {
-//"note": "Please be on time",
-//"passengers": [
-//{
-//"firstName": "Abi",
-//"lastName": "Wasabi",
-//"title": "MRS",
-//"contacts": {
-//"phoneNumber": "+33123456789",
-//"email": "abi@gmail.com"
-//},
-//"billingAddress": {
-//    "line": "Avenue de la Bourdonnais, 19",
-//          "zip": "75007",
-//          "countryCode": "FR",
-//          "cityName": "Paris"
-//        }
-//      }
-//    ],
-//    "agency": {
-//    "contacts": [
-//        {
-//            "email": {
-//            "address": "abc@test.com"
-//          }
-//        }
-//      ]
-//    },
-//    "payment": {
-//    "methodOfPayment": "CREDIT_CARD",
-//      "creditCard": {
-//        "number": "4111111111111111",
-//        "holderName": "ABI WASABI",
-//        "vendorCode": "VI",
-//        "expiryDate": "1024",
-//        "cvv": "123"
-//      }
-//    },
-//    "extraServices": [
-//      {
-//          "code": "EWT",
-//        "itemId": "EWT0291"
-//      }
-//    ],
-//    "equipment": [
-//      {
-//          "code": "BBS"
-//      }
-//    ],
-//    "corporation": {
-//    "address": {
-//        "line": "5 Avenue Anatole France",
-//        "zip": "75007",
-//        "countryCode": "FR",
-//        "cityName": "Paris"
-//      },
-//      "info": {
-//        "AU": "FHOWMD024",
-//        "CE": "280421GH"
-//      }
-//    },
-//    "startConnectedSegment": {
-//    "transportationType": "FLIGHT",
-//      "transportationNumber": "AF380",
-//      "departure": {
-//        "uicCode": "7400001",
-//        "iataCode": "CDG",
-//        "localDateTime": "2024-08-01T08:30:00"
-//      },
-//      "arrival": {
-//        "uicCode": "7400001",
-//        "iataCode": "CDG",
-//        "localDateTime": "2024-08-01T10:30:00"
-//      }
-//    },
-//    "endConnectedSegment": {
-//    "transportationType": "FLIGHT",
-//      "transportationNumber": "AF380",
-//      "departure": {
-//        "uicCode": "7400001",
-//        "iataCode": "CDG",
-//        "localDateTime": "2024-08-01T11:30:00"
-//      },
-//      "arrival": {
-//        "uicCode": "7400001",
-//        "iataCode": "CDG",
-//        "localDateTime": "2024-08-01T13:30:00"
-//      }
-//    }
-//  }
-//}
 
     public function transferSearch(Request $request): JsonResponse
     {
-        // Validate the user input
-        $request->validate([
-            'origin' => 'required|string',
-            'destination' => 'required|string',
-            'start_date_time' => 'required|date_format:Y-m-d\TH:i:', // Example: 2024-08-01T10:00:00
-            'end_date_time' => 'required|date_format:Y-m-d\TH:i:',
-            'max_results' => 'integer|nullable',
-        ]);
-
-        $origin = $request->input('origin');
-        $destination = $request->input('destination');
-        $startDateTime = $request->input('start_date_time');
-        $endDateTime = $request->input('end_date_time');
-        $maxResults = $request->input('max_results', 10); // Default to 10 if not provided
-
         try {
-            // Get access token
-            $accessToken = $this->getAccessToken();
-
-            if (!$accessToken) {
-                return response()->json(['error' => 'Unable to authenticate with Amadeus API'], 500);
-            }
-
-            // Send request to Amadeus Transfer Search API
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer '.$accessToken,
-            ])->get($this->amadeusApiUrl.'v1/shopping/transfer-offers', [
-                'origin' => $origin,
-                'destination' => $destination,
-                'start_date_time' => $startDateTime,
-                'end_date_time' => $endDateTime,
-                'max_results' => $maxResults,
+            // Validate user input
+            $request->validate([
+                'startCityName' => 'required|string',
+                'endCityName' => 'required|string',
+                'startDateTime' => 'required|date_format:Y-m-d\TH:i:s',
+                'passengers' => 'nullable|integer|min:1',
+                'transferType' => 'required|string|in:private,shared,PRIVATE,SHARED'
             ]);
-
-            if ($response->successful()) {
-                $data = $response->json();
-                return response()->json($data, 200);
-            }else {
-                Log::error('Amadeus API error', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
-                return response()->json(['error' => 'Failed to search transfer offers'], 500);
+            //default passengers value is 1 if not provided
+            $passengers = $request->input('passengers', 1);
+            //formatting the transferType to uppercase
+            $transferType = strtoupper($request->input('transferType'));
+            //formatted transferType is valid
+            if (!in_array($transferType, ['PRIVATE', 'SHARED'])) {
+                return response()->json(['error' => 'Invalid transferType value'], 400);
             }
-        } catch (\Exception $e) {
-            //Handling any exceptions
-            Log::error('Exception caught while searching for transfers: ' . $e->getMessage(), ['exception' => $e,]);
-            return response()->json(['error' => 'An error occurred', 'message' => $e->getMessage()], 500);
-        }
-    }
+            // Get the access token
+            $accessToken = AmadeusAuthService::getAccessToken();
+            //startLocationCode obtained frm startCityName provided
+            $startLocationCode = $this->getAirportCode($accessToken, $request->input('startCityName'));
+            //endCountryCode obtained frm endCityName provided
+            $endCountryCode = $this->getCountryCode($accessToken, $request->input('endCityName'));
+            //endGeoCode(lat n long)obtained frm endCityName provided
+            $endGeoCode = $this->getGeoCode($accessToken, $request->input('endCityName'));
 
+            //payload
+            $payload = [
+                'startLocationCode' => $startLocationCode,
+                'endAddressLine' => $request->input('endCityName'),
+                'endCityName' => $request->input('endCityName'),
+                'endCountryCode' => $endCountryCode,
+                'endName' => $request->input('endCityName'),
+                'endGeoCode' => $endGeoCode,
+                'transferType' => $transferType,//uppercase transferType
+                'startDateTime' => $request->input('startDateTime'),
+                'passengers' => $passengers,
+            ];
+            // Log the payload
+            Log::info('Amadeus API Payload', $payload);
 
-
-    public function bookingTransfer(Request $request): JsonResponse
-    {
-        try{
-            $transferId  = $request->query('offerId');//getting the offerId from query string
-            $travelerInfo = $request->input('transferInfo');
-            $paymentInfo = $request->input('paymentInfo');
-
-            $accessToken = $this->getAccessToken();
-
-            $url = $this->amadeusApiUrl . 'v1/ordering/transfer-orders' . $transferId;
-
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer '.$accessToken,
+            $response = Http::retry(3, 100)->withHeaders([
+                'Authorization' => 'Bearer ' . $accessToken,
                 'Content-Type' => 'application/json',
-            ])->post($url, [
-                'data' => [
-                    'note' => $travelerInfo['note'],
-                    'passengers' => $travelerInfo['passengers'],
-                    'agency' => $travelerInfo['agency'],
-                    'payment' => $paymentInfo['payment'],
-                    'extraServices' => $travelerInfo['extraServices'],
-                    'equipment' => $travelerInfo['equipment'],
-                    'corporation' => $travelerInfo['corporation'],
-                    'startConnectedSegment' => $travelerInfo['startConnectedSegment'],
-                    'endConnectedSegment' => $travelerInfo['endConnectedSegment']
-                ],
-            ]);
+            ])->post($this->amadeusApiUrl . 'v1/shopping/transfer-offers', $payload);
 
-            Log::info('Amadeus Transfer Booking API Response', [
+            Log::info('Amadeus Transfer Search API Response', [
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
 
             if ($response->failed()) {
+                $errors = $response->json('errors') ?? [];
+                $userMessage = 'Some transfer services are unavailable';
                 return response()->json([
-                    'error' => 'Failed to book order',
+                    'error' => 'Failed to search transfer offers',
                     'details' => $response->json(),
-                ], $response ->status());
+                    'message' => $userMessage,
+                ], $response->status());
             }
+
             return response()->json($response->json());
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Failed to book transfer', 'message' => $e->getMessage()], 500);
+            return response()->json(['error' => 'Failed to search transfer offers', 'message' => $e->getMessage()], 500);
         }
     }
+
+//    public function bookingTransfer(Request $request): JsonResponse
+//    {
+//        try{
+//            //Validating
+//            $request->validate([
+//                'offerId' => 'required|string',
+//                'transferInfo' => 'required|array',
+//                'paymentInfo' => 'required|array'
+//            ]);
+//            $offerId = $request->query('offerId');
+//            $transferInfo = $request->input('transferInfo');
+//            $paymentInfo = $request->input('paymentInfo');
+//
+//            Log::info('Booking Transfer Input', [
+//                'offerId' => $offerId,
+//                'transferInfo' => $transferInfo,
+//                'paymentInfo' => $paymentInfo
+//            ]);
+//            // Checking if transferInfo and paymentInfo are properly set
+//            if (!$transferInfo || !$paymentInfo) {
+//                return response()->json(['error' => 'Missing transferInfo or paymentInfo'], 400);
+//            }
+//             $accessToken = AmadeusAuthService::getAccessToken();
+//
+//            $payload = [
+//                'data' => [
+//                    'note' => $transferInfo['note'] ?? '',
+//                    'passengers' => $transferInfo['passengers'] ?? [],
+//                    'payment' => $paymentInfo['payment'] ?? []
+//                ],
+//            ];
+//            Log::info('Payload for Amadeus Transfer Booking API', ['payload' => $payload]);
+//
+//            $response = Http::withHeaders([
+//                'Authorization' => 'Bearer ' . $accessToken,
+//                'Content-Type' => 'application/json',
+//            ])->post($this->amadeusApiUrl . 'v1/ordering/transfer-orders/' . $offerId, $payload);
+//
+//            Log::info('Amadeus Transfer Booking API Response', [
+//                'status' => $response->status(),
+//                'body' => $response->body(),
+//            ]);
+//
+//            if ($response->failed()) {
+//                return response()->json([
+//                    'error' => 'Failed to book car transfer',
+//                    'details' => $response->json(),
+//                ], $response->status());
+//            }
+//            //Saving booking data to the local database
+////            $bookingData = $response->json();
+////            if (!isset($bookingData['data'])) {
+////                Log::error('Unexpected response structure', ['response' => $bookingData]);
+////                return response()->json(['error' => 'Unexpected response structure'], 500);
+////            }
+////            $transferBooking = new TransfersBooking();
+////            $transferBooking->reference = $bookingData['data']['reference'];
+////            $transferBooking->order_id = $bookingData['data']['id'];
+////            $transferBooking->agency = $bookingData['data']['agency'] ?? [];
+////            $transferBooking->transfers = $bookingData['data']['transfers'] ?? [];
+////            $transferBooking->passengers = $bookingData['data']['passengers'] ?? [];
+////            $transferBooking->passenger_characteristics = $bookingData['data']['passengerCharacteristics'] ?? [];
+////            $transferBooking->extra_services = $bookingData['data']['extraServices'] ?? [];
+////            $transferBooking->quotation = $bookingData['data']['quotation'] ?? [];
+////            $transferBooking->converted = $bookingData['data']['converted'] ?? [];
+////            $transferBooking->cancellation_rules = $bookingData['data']['cancellationRules'] ?? [];
+////            $transferBooking->distance = $bookingData['data']['distance'] ?? [];
+////
+////            $transferBooking->save();
+//
+//            return response()->json($response->json());
+//    } catch (Exception $e) {
+//            Log::error('Error booking car transfer', ['exception' => $e]);
+//            return response()->json(['error' => 'Failed to book car transfer', 'message' => $e->getMessage()], 500);
+//        }
+//    }
+    public function bookingTransfer(Request $request): JsonResponse
+    {
+        try {
+            // Validate essential inputs
+            $request->validate([
+                'offerId' => 'required|string',
+                'passengerFirstName' => 'required|string',
+                'passengerLastName' => 'required|string',
+                'passengerTitle' => 'required|string|in:MR,MS,MRS,DR',
+                'passengerPhoneNumber' => 'required|string',
+                'passengerEmail' => 'required|email',
+                'paymentMethod' => 'required|string|in:CREDIT_CARD',
+                'creditCardNumber' => 'required|string',
+                'creditCardHolderName' => 'required|string',
+                'creditCardExpiryDate' => 'required|string',
+                'creditCardCVV' => 'required|string',
+            ]);
+
+            $offerId = $request->query('offerId');
+
+            // Prepare the payload with essential user input
+            $payload = [
+                'data' => [
+                    'passengers' => [
+                        [
+                            'firstName' => $request->input('passengerFirstName'),
+                            'lastName' => $request->input('passengerLastName'),
+                            'title' => $request->input('passengerTitle'),
+                            'contacts' => [
+                                'phoneNumber' => $request->input('passengerPhoneNumber'),
+                                'email' => $request->input('passengerEmail'),
+                            ],
+                            // Optionally add billing address if provided
+                            'billingAddress' => $request->input('billingAddress') ?? [
+                                    'line' => 'Default Street 123',
+                                    'zip' => '00000',
+                                    'countryCode' => 'US',
+                                    'cityName' => 'Default City'
+                                ]
+                        ]
+                    ],
+                    'payment' => [
+                        'methodOfPayment' => $request->input('paymentMethod'),
+                        'creditCard' => [
+                            'number' => $request->input('creditCardNumber'),
+                            'holderName' => $request->input('creditCardHolderName'),
+                            'vendorCode' => 'VI', // assuming Visa, change as needed
+                            'expiryDate' => $request->input('creditCardExpiryDate'),
+                            'cvv' => $request->input('creditCardCVV')
+                        ]
+                    ],
+                    // Default note
+                    'note' => $request->input('note') ?? 'No special instructions',
+                ]
+            ];
+
+            $accessToken = AmadeusAuthService::getAccessToken();
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $accessToken,
+                'Content-Type' => 'application/json',
+            ])->post($this->amadeusApiUrl . 'v1/ordering/transfer-orders/' . $offerId, $payload);
+
+            if ($response->failed()) {
+                return response()->json([
+                    'error' => 'Failed to book car transfer',
+                    'details' => $response->json(),
+                ], $response->status());
+            }
+
+            return response()->json($response->json());
+        } catch (\Exception $e) {
+            Log::error('Error booking car transfer', ['exception' => $e]);
+            return response()->json(['error' => 'Failed to book car transfer', 'message' => $e->getMessage()], 500);
+        }
+    }
+
 
     public function transferManagement(Request $request, $orderId): JsonResponse
     {
@@ -295,63 +259,87 @@ class CarsTransfersController extends Controller
             if (!$confirmNbr) {
                 return response()->json(['error' => 'Confirmation number is required'], 400);
             }
-
-            $accessToken = $this->getAccessToken();
+            Log::info('Cancelling transfer order:', [
+                'orderId' => $orderId,
+                'confirmNbr' => $confirmNbr,
+            ]);
+            $accessToken = AmadeusAuthService::getAccessToken();
 
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer '.$accessToken,
                 'Content-Type' => 'application/json',
-            ])->post($this->amadeusApiUrl.'v1/ordering/transfer-orders/' .$orderId. '/transfers/cancellation',[
+            ])->post($this->amadeusApiUrl.'v1/ordering/transfer-orders/' . $orderId . '/transfers/cancellation', [
                 'confirmNbr' => $confirmNbr,
             ]);
-
             Log::info('Amadeus Transfer Management API Response', [
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
 
-            if ($response->failed()) {
-                return response()->json([
-                    'error' => 'Failed to cancel transfer',
-                    'details' => $response->json(),
-                ], $response->status());
+            //returning response as JSON
+            if ($response->successful()) {
+                return response()->json($response->json());
+            } else {
+                return response()->json(['error' => 'Failed to cancel car transfer order.'], $response->status());
             }
-            return response()->json($response->json());
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Failed to cancel transfer', 'message' => $e->getMessage()], 500);
+        } catch (Exception $e) {
+            // Log the error message
+            Log::error('Error canceling transfer order: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to cancel transfer order.'], 500);
         }
     }
 
-    private function getAccessToken()
+
+
+
+    //helper func retrieves city code using Amadeus API
+    private function getAirportCode($accessToken, $cityName)
     {
-        try {
-            $response = Http::asForm()->post('https://test.api.amadeus.com/v1/security/oauth2/token/', [
-                'grant_type' => 'client_credentials',
-                'client_id' => $this->amadeusApiKey,
-                'client_secret' => $this->amadeusApiSecret,
-            ]);
-
-            if ($response->successful()) {
-                $data = $response->json();
-                Log::info('Amadeus API token response', $data);
-
-                if (isset($data['access_token'])) {
-                    return $data['access_token'];
-                } else {
-                    Log::error('Access token not found in response', $data);
-                    throw new \Exception('Access token not found in response');
-                }
-            } else {
-                Log::error('Error fetching access token, HTTP status: ' . $response->status(), [
-                    'response' => $response->body(),
-                ]);
-                throw new \Exception('Error fetching access token, HTTP status: ' . $response->status());
-            }
-        } catch (\Exception $e) {
-            Log::error('Exception caught while fetching access token: ' . $e->getMessage(), [
-                'exception' => $e,
-            ]);
-            throw new \Exception('Exception caught while fetching access token: ' . $e->getMessage());
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $accessToken,
+            'Content-Type' => 'application/json',
+        ])->get($this->amadeusApiUrl . 'v1/reference-data/locations', [
+            'keyword' => $cityName,
+            'subType' => 'AIRPORT',
+        ]);
+        Log::info('Get Airport Code Response', ['response' => $response->json()]);
+        $locations = $response->json('data');
+        if (count($locations) > 0) {
+            return $locations[0]['iataCode']; //returns the first matching airport code
         }
+        return null; //if no airport is found
+    }
+    private function getCountryCode($accessToken, $cityName)
+    {
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $accessToken,
+            'Content-Type' => 'application/json',
+        ])->get($this->amadeusApiUrl . 'v1/reference-data/locations', [
+            'keyword' => $cityName,
+            'subType' => 'CITY',
+        ]);
+        Log::info('Get Country Code Response', ['response' => $response->json()]);
+        $locations = $response->json('data');
+        if (count($locations) > 0) {
+            return $locations[0]['address']['countryCode'];//returns the country code
+        }
+        return null;//if no city is found
+    }
+    private function getGeoCode($accessToken, $cityName)
+    {
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $accessToken,
+            'Content-Type' => 'application/json',
+        ])->get($this->amadeusApiUrl . 'v1/reference-data/locations', [
+            'keyword' => $cityName,
+            'subType' => 'CITY',
+        ]);
+        Log::info('Get Geo Code Response', ['response' => $response->json()]);
+        $locations = $response->json('data');
+        if (count($locations) > 0 && isset($locations[0]['geoCode'])) {
+            $geoCode = $locations[0]['geoCode'];
+            return $geoCode['latitude'] . ',' . $geoCode['longitude'];
+        }
+        return null; //null if no geocode is found
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Flights;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Services\AmadeusAuthService;
 use Exception;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
@@ -13,148 +14,104 @@ use Illuminate\Support\Facades\Log;
 
 class FlightOrderController extends Controller
 {
-    protected mixed $amadeusApiKey;
-    protected mixed $amadeusApiSecret;
+//    protected mixed $amadeusApiKey;
+//    protected mixed $amadeusApiSecret;
     protected string $amadeusApiUrl = 'https://test.api.amadeus.com/';
 
     public function __construct()
     {
-        $this->amadeusApiKey = env('AMADEUS_API_KEY');
-        $this->amadeusApiSecret = env('AMADEUS_API_SECRET');
+//        $this->amadeusApiKey = env('AMADEUS_API_KEY');
+//        $this->amadeusApiSecret = env('AMADEUS_API_SECRET');
     }
 
-
-
-    public function retrieve($flightOrderId, Request $request): JsonResponse
+    public function retrieve(Request $request, $flightOrderId): JsonResponse
     {
         try {
-            $reference = $request->input('reference');
-            $accessToken = $this->getAccessToken();
+            Log::info('Retrieve Flight Order Request', [
+                'flightOrderId' => $flightOrderId,
+//                'reference' => $reference,
+            ]);
 
-            Log::info('Flight order ID:', ['flightOrderId' => $flightOrderId]);
+            $encodedFlightOrderId = rawurlencode($flightOrderId);
+
+            $accessToken = AmadeusAuthService::getAccessToken();
+
+            $apiUrl = "{$this->amadeusApiUrl}v1/booking/flight-orders/{$encodedFlightOrderId}";
 
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $accessToken,
-                'Content-Type' => 'application/json',
-            ])->get($this->amadeusApiUrl . 'v1/booking/flight-orders/' . $flightOrderId, [
-                'reference' => $reference,
-            ]);
+            ])->get($apiUrl);
 
-            Log::info('Amadeus API retrieve order response', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
-            if ($response->successful()) {
-                return $response->json();
-            } else {
-                return response()->json(['error' => 'Failed to retrieve flight order.'], $response->status());
-            }
-        } catch (Exception $e) {
-            Log::error('Error retrieving flight order: ' . $e->getMessage());
-            return response()->json(['error' => 'Failed to retrieve flight order.'], 500);
-        }
-    }
-
-    public function cancel($flightOrderId): JsonResponse
-    {
-        try {
-            $accessToken = $this->getAccessToken();
-
-            Log::info('Flight order ID:', ['flightOrderId' => $flightOrderId]);
-
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $accessToken,
-                'Content-Type' => 'application/json',
-            ])->delete($this->amadeusApiUrl . 'v1/booking/flight-orders/' . $flightOrderId);
-
-            Log::info('Amadeus API cancel order response', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-
-            if ($response->successful()) {
-                //update status column to b canceled
-                $booking = Booking::find($flightOrderId);
-                if ($booking) {
-                    $booking->status = Booking::STATUS_CANCELED;
-                    $booking->save();
-                }
-                return response()->json(['message' => 'Flight order canceled successfully.']);
-            } else {
-                return response()->json(['error' => 'Failed to cancel flight order.'], $response->status());
-            }
-        } catch (Exception $e) {
-            Log::error('Error canceling flight order: ' . $e->getMessage());
-            return response()->json(['error' => 'Failed to cancel flight order.'], 500);
-        }
-    }
-
-
-    public function getSeatMap(Request $request): JsonResponse
-    {
-        try {
-            $request->validate([
-                'flightOffers' => 'required|array',
-            ]);
-            Log::info($request);
-
-            $flightOffers = $request->input('flightOffers');
-
-            //retrieving access token
-            $accessToken = $this->getAccessToken();
-
-            //Making an API request to Amadeus
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $accessToken,
-            ])->post($this->amadeusApiUrl . 'v1/shopping/seatmaps', [
-                'data' => $flightOffers
-            ]);
-
-            //Logging the response for debugging
-            Log::info('Amadeus Seatmap API Response', [
+            Log::info('Amadeus Flight Order API Response', [
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
 
             if ($response->failed()) {
                 return response()->json([
-                    'error' => 'Failed to retrieve seat map',
+                    'error' => 'Failed to retrieve flight order',
                     'details' => $response->json()
                 ], $response->status());
             }
-
             return response()->json($response->json());
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Failed to fetch seat map', 'message' => $e->getMessage()], 500);
+            Log::error('Error retrieving flight order', [
+                'message' => $e->getMessage(),
+            ]);
+            return response()->json(['error' => 'Failed to retrieve flight order', 'message' => $e->getMessage()], 500);
         }
     }
 
 
-    /**
-     * @throws Exception
-     */
-    private function getAccessToken()
+
+    public function cancel(Request $request, $flightOrderId): JsonResponse
     {
         try {
-            $response = Http::asForm()->post('https://test.api.amadeus.com/v1/security/oauth2/token', [
-                'grant_type' => 'client_credentials',
-                'client_id' => $this->amadeusApiKey,
-                'client_secret' => $this->amadeusApiSecret,
+            Log::info('Cancel Flight Order Request', [
+                'flightOrderId' => $flightOrderId,
             ]);
 
-            $data = $response->json();
+            $encodedFlightOrderId = rawurlencode($flightOrderId);
 
-            Log::info('Amadeus API token response', $data);
+            $accessToken = AmadeusAuthService::getAccessToken();
 
-            if (isset($data['access_token'])) {
-                return $data['access_token'];
+            $apiUrl = "{$this->amadeusApiUrl}v1/booking/flight-orders/{$encodedFlightOrderId}";
+
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $accessToken,
+            ])->delete($apiUrl);
+
+            Log::info('Amadeus Flight Order API Response', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            if ($response->successful()) {
+                //finding booking by flightOrderId in booking_info column
+                $booking = Booking::whereRaw('JSON_UNQUOTE(JSON_EXTRACT(booking_info, "$.data.id")) = ?', [$flightOrderId])->first();
+
+                if ($booking) {
+                    Log::info('Searching for booking with flightOrderId:', [
+                        'flightOrderId' => $flightOrderId,
+                    ]);
+                    $booking->status = Booking::STATUS_CANCELED;
+                    $booking->save();
+                    return response()->json(['message' => 'Flight order successfully cancelled.']);
+                } else {
+                    return response()->json(['error' => 'Booking not found.'], 404);
+                }
             } else {
-                throw new Exception('Access token not found in response');
+                return response()->json([
+                    'error' => 'Failed to cancel flight order.',
+                    'details' => $response->json()
+                ], $response->status());
             }
-        } catch (Exception $e) {
-            Log::error('Error fetching access token: ' . $e->getMessage());
-            throw new Exception('Error fetching access token: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            Log::error('Error canceling flight order: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to cancel flight order.'], 500);
         }
     }
+
+
+
 }

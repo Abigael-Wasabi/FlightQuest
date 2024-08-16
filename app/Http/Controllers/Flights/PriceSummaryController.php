@@ -18,8 +18,7 @@ class PriceSummaryController extends Controller
         try {
             //retrieve the booking details from the database
             $booking = Booking::findOrFail($bookingId);
-
-            //decode booking_info JSON column
+            //decoding JSON column
             $bookingInfo = json_decode($booking->booking_info, true);
 
             $summary = [//sets up an initial summary with all values being 0
@@ -70,18 +69,20 @@ class PriceSummaryController extends Controller
 
                 // Taxes
                 if (isset($price['total'])) {
-                    $summary['total_taxes'] = (float)$price['total'] - $summary['base_price'] - $summary['fees']['supplier'] - $summary['fees']['payment'] - $summary['fees']['ticketing'] - $summary['additional_services']['checked_bags'] - $summary['additional_services']['seats'] - $summary['additional_services']['insurance'];
+                    $summary['total_taxes'] = (float)$price['total']
+                        - $summary['base_price']
+                        - $summary['fees']['supplier']
+                        - $summary['fees']['payment']
+                        - $summary['fees']['ticketing']
+                        - $summary['additional_services']['checked_bags']
+                        - $summary['additional_services']['seats']
+                        - $summary['additional_services']['insurance'];
                 }
             }
-
-            //generating n storing the PNR
-            $pnr = $this->generatePnr();
-            $booking->pnr = $pnr;
             $booking->save();
 
             return [
                 'summary' => $summary,
-                'pnr' => $pnr,
                 'total_price' => $summary['total_price']
             ];
 
@@ -95,15 +96,14 @@ class PriceSummaryController extends Controller
         }
     }
 
-    public function generatePnr()
-    {
-        //combination of letters and numbers
-        return strtoupper(substr(bin2hex(random_bytes(8)), 0, 8));
-    }
-
     function sendTicket($bookingId): JsonResponse
     {
-        TicketMail::sendTicketEmail($bookingId);
-        return response()->json(['message' => 'Ticket email sent successfully.']);
+        try {
+            TicketMail::sendTicketEmail($bookingId);
+            return response()->json(['message' => 'Ticket email sent successfully.']);
+        } catch (Exception $e) {
+            Log::error('Error sending ticket email: ' . $e->getMessage());
+            return response()->json(['error' => 'Error sending ticket email'], 500);
+        }
     }
 }

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Models\FlightOrders;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use GuzzleHttp\Client;
@@ -152,26 +153,56 @@ class Flight extends Model
             $orderConfirmation = $orderResponse->json();
             Log::info('Order Confirmation:', ['orderConfirmation' => $orderConfirmation]);
 
-            //update the local db with the order confirmation
+            //storing order confirmation in db
             $booking = Booking::find($bookingId);
 
             if ($booking) {
                 $booking->booking_info = json_encode($orderConfirmation); //stored as JSON
                 $booking->status = Booking::STATUS_CONFIRMED; //update status to confirmed
 
-                //generate pnr
-                $pnr = (new PriceSummaryController())->generatePnr();
-                $booking->pnr = $pnr;
-
                 $booking->save();
 
-                //calculate price summary
-//                $priceSummaryController = new PriceSummaryController();
-//                $priceSummary = $priceSummaryController->priceSummary($bookingId);
 
-                //sending eticket
+                FlightOrders::create([
+                    'booking_id' => $bookingId,
+                    'type' => $orderConfirmation['data']['type'],
+                    'order_id' => $orderConfirmation['data']['id'],
+                    'queuing_office_id' => $orderConfirmation['data']['queuingOfficeId'] ?? null,
+                    'reference' => $orderConfirmation['data']['associatedRecords'][0]['reference'] ?? null,
+                    'creation_date' => $orderConfirmation['data']['associatedRecords'][0]['creationDate'] ?? null,
+                    'origin_system_code' => $orderConfirmation['data']['associatedRecords'][0]['originSystemCode'] ?? null,
+                    'flight_offer_id' => $orderConfirmation['data']['associatedRecords'][0]['flightOfferId'] ?? null,
+                    'source' => $orderConfirmation['data']['flightOffers'][0]['source'] ?? null,
+                    'non_homogeneous' => $orderConfirmation['data']['flightOffers'][0]['nonHomogeneous'] ?? false,
+                    'last_ticketing_date' => $orderConfirmation['data']['flightOffers'][0]['lastTicketingDate'] ?? null,
+                    'currency' => $orderConfirmation['data']['flightOffers'][0]['price']['currency'] ?? null,
+                    'total' => $orderConfirmation['data']['flightOffers'][0]['price']['total'] ?? null,
+                    'base' => $orderConfirmation['data']['flightOffers'][0]['price']['base'] ?? null,
+                    'grand_total' => $orderConfirmation['data']['flightOffers'][0]['price']['grandTotal'] ?? null,
+                    'billing_currency' => $orderConfirmation['data']['flightOffers'][0]['price']['billingCurrency'] ?? null,
+                    'fare_type' => $orderConfirmation['data']['flightOffers'][0]['pricingOptions']['fareType'][0] ?? null,
+                    'included_checked_bags_only' => $orderConfirmation['data']['flightOffers'][0]['pricingOptions']['includedCheckedBagsOnly'] ?? false,
+                    'itineraries' => json_encode($orderConfirmation['data']['flightOffers'][0]['itineraries'] ?? []),
+//                    'traveler_pricings' => json_encode($orderConfirmation['data']['flightOffers'][0]['travelerPricings'] ?? []),
+                    'traveler_pricings' => json_encode($orderConfirmation['data']['flightOffers'][0]['travelerPricings'] ?? []),
+                    'travelers' => json_encode($orderConfirmation['data']['travelers'] ?? []),
+                    'remarks' => json_encode($orderConfirmation['data']['remarks'] ?? []),
+                    'ticketing_agreement' => json_encode($orderConfirmation['data']['ticketingAgreement'] ?? []),
+                    'automated_process' => json_encode($orderConfirmation['data']['automatedProcess'] ?? []),
+                    'contacts' => json_encode($orderConfirmation['data']['contacts'] ?? []),
+//                    'dictionaries' => json_encode($orderConfirmation['data']['dictionaries'] ?? []),
+                    'dictionaries' => json_encode($orderConfirmation['dictionaries'] ?? []),
+                ]);
+
+                //calculate price summary
+                $priceSummaryController = new PriceSummaryController();
+                $priceSummary = $priceSummaryController->priceSummary($bookingId);
+
+                //sending e-ticket
 //                (new TicketMail($bookingId, new TicketService()))->sendTicketEmail($bookingId);
-                //TicketMail::sendTicketEmail($bookingId);
+//                TicketMail::sendTicketEmail($bookingId, new TicketService());
+//                TicketMail::sendTicketEmail($bookingId, $orderConfirmation['data']['id']);
+
 
                 return response()->json([
 //                    'message' => 'Flight order created and ticket sent successfully',

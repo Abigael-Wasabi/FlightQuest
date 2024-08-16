@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Cars;
 
 use App\Http\Controllers\Controller;
 use App\Models\City;
-use App\Models\Country;
+//use App\Models\Country;
+use App\Services\AmadeusAuthService;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -37,7 +39,7 @@ class DestinationController extends Controller
 //            $latitude = $request->input('latitude');
 //            $longitude = $request->input('longitude');
 //
-//            $accessToken = $this->getAccessToken();
+//            $accessToken = AmadeusAuthService::getAccessToken();
 //
 //            $response = Http::withHeaders([
 //                'Authorization' => 'Bearer ' . $accessToken,
@@ -84,7 +86,7 @@ class DestinationController extends Controller
                 'offset' => 'integer|nullable',
             ]);
 
-            $accessToken = $this->getAccessToken();
+            $accessToken = AmadeusAuthService::getAccessToken();
             $location = $request->input('location');
             $categories = $request->input('categories', []);
             $limit = $request->input('limit',10);
@@ -150,7 +152,7 @@ class DestinationController extends Controller
                 ], 400);
             }
 
-            $accessToken = $this->getAccessToken();
+            $accessToken = AmadeusAuthService::getAccessToken();
 
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $accessToken,
@@ -184,7 +186,7 @@ class DestinationController extends Controller
     public function PointsOfInterestById($poisId): JsonResponse
     {
         try{
-            $accessToken = $this->getAccessToken();
+            $accessToken = AmadeusAuthService::getAccessToken();
 
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $accessToken,
@@ -219,7 +221,7 @@ class DestinationController extends Controller
             'location' => 'required|string',
             'max_results' => 'integer|nullable',
         ]);
-        $accessToken = $this->getAccessToken();
+        $accessToken = AmadeusAuthService::getAccessToken();
 
         $location = $request->query('location');
         $maxResults = $request->query('max_results', 10); //Default to 10 if not provided
@@ -274,7 +276,7 @@ class DestinationController extends Controller
                 ], 400);
             }
 
-            $accessToken = $this->getAccessToken();
+            $accessToken = AmadeusAuthService::getAccessToken();
 
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $accessToken,
@@ -307,7 +309,7 @@ class DestinationController extends Controller
     public function getToursAndActivitiesById($activityId): JsonResponse
     {
         try{
-            $accessToken = $this->getAccessToken();
+            $accessToken = AmadeusAuthService::getAccessToken();
 
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $accessToken,
@@ -351,7 +353,7 @@ class DestinationController extends Controller
                 return response()->json(['error' => 'Keyword is required'], 400);
             }
 
-            $accessToken = $this->getAccessToken();
+            $accessToken = AmadeusAuthService::getAccessToken();
 
             //query params
             $queryParams = [
@@ -422,7 +424,7 @@ class DestinationController extends Controller
 
         try {
             // Retrieve all cities for the given country
-            $cities = City::where('country', $country)
+            $cities = City::where('country_name', $country)
                 ->limit($limit)->get();
 
             // Check if cities were found
@@ -452,7 +454,7 @@ class DestinationController extends Controller
             //getting users ip address
             $ipAddress = $request->ip();
 
-            $accessToken = $this->getAccessToken();
+            $accessToken = AmadeusAuthService::getAccessToken();
 
             //SEnd request to IP STack
             $client = new Client();
@@ -497,62 +499,7 @@ class DestinationController extends Controller
     }
 
 
-    private function getAccessToken()
-    {
-        try {
-            $response = Http::asForm()->post('https://test.api.amadeus.com/v1/security/oauth2/token', [
-                'grant_type' => 'client_credentials',
-                'client_id' => $this->amadeusApiKey,
-                'client_secret' => $this->amadeusApiSecret,
-            ]);
-
-            $data = $response->json();
-
-            Log::info('Amadeus API token response', $data);
-
-            if (isset($data['access_token'])) {
-                return $data['access_token'];
-            } else {
-                throw new \Exception('Access token not found in response');
-            }
-        } catch (\Exception $e) {
-            Log::error('Error fetching access token: ' . $e->getMessage());
-            throw new \Exception('Error fetching access token: ' . $e->getMessage());
-        }
-    }
 
 
-//    private function getAccessToken()
-//    {
-//        try {
-//            $response = Http::asForm()->post('https://test.api.amadeus.com/v1/security/oauth2/token', [
-//                'grant_type' => 'client_credentials',
-//                'client_id' => $this->amadeusApiKey,
-//                'client_secret' => $this->amadeusApiSecret,
-//            ]);
-//
-//            if ($response->successful()) {
-//                $data = $response->json();
-//                Log::info('Amadeus API token response', $data);
-//
-//                if (isset($data['access_token'])) {
-//                    return $data['access_token'];
-//                } else {
-//                    Log::error('Access token not found in response', $data);
-//                    throw new \Exception('Access token not found in response');
-//                }
-//            } else {
-//                Log::error('Error fetching access token, HTTP status: ' . $response->status(), [
-//                    'response' => $response->body(),
-//                ]);
-//                throw new \Exception('Error fetching access token, HTTP status: ' . $response->status());
-//            }
-//        } catch (\Exception $e) {
-//            Log::error('Exception caught while fetching access token: ' . $e->getMessage(), [
-//                'exception' => $e,
-//            ]);
-//            throw new \Exception('Exception caught while fetching access token: ' . $e->getMessage());
-//        }
-//    }
 
 }
